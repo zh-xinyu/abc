@@ -3,7 +3,7 @@ name = "abc-minimal"
 version = "0.1.0"
 description = "Minimal end-to-end release for the abc dataset and the ABC-DiT (LBM) policy."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "numpy",
     "torch==2.11.0+cu128",
@@ -24,9 +24,22 @@ dependencies = [
     "mcap-protobuf-support",
     # Optional: W&B logging in train.py (off by default; --log-wandb to enable).
     "wandb",
+    # lerobot: VLA/policy models (ACT, Diffusion, Pi0, SmolVLA, …)
+    # Installed as editable from local submodule (third_party/lerobot).
+    "lerobot",
+]
+
+[tool.uv]
+# lerobot 0.5.1 pins torch<2.11.0 and torchcodec<0.11.0, but we use the
+# newer versions already validated in the main workspace.  Override here
+# so uv resolves without conflict.
+override-dependencies = [
+    "torch==2.11.0+cu128",
+    "torchcodec==0.11.0+cpu",
 ]
 
 [tool.uv.sources]
+lerobot = { path = "third_party/lerobot", editable = true }
 torch = { index = "pytorch-cu128" }
 torchcodec = { index = "pytorch-cpu" }
 

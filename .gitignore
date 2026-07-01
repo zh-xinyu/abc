@@ -6,3 +6,5 @@ cache/
 uv.lock
 checkpoints/
 outputs/
+dataset/
+wandb/
