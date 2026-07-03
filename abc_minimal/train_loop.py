@@ -258,7 +258,7 @@ def batch_to_device(batch, device, embedder):
 def main(config: TrainConfig):
     cache_root = Path(config.cache_root)
     checkpoint_path = cache_root / "abc_dit_xl_200k_model.pt"
-    output_dir = cache_root / "finetune_checkpoints"
+    output_dir = Path(config.output_dir)
     components = validate_train_config(config, cache_root, checkpoint_path)
 
     distributed = "RANK" in os.environ
@@ -411,26 +411,34 @@ def main(config: TrainConfig):
 
     model.train()
     step, epoch = 0, 0
+    accum_steps = max(1, config.grad_accum_steps)
     t_last = time.monotonic()
     while step < config.train_steps:
         if train_sampler is not None:
             train_sampler.set_epoch(epoch)
+        micro_step = 0
         for batch in train_loader:
             if step >= config.train_steps:
                 break
             batch = batch_to_device(batch, device, embedder)
 
+            is_last_accum = (micro_step % accum_steps == accum_steps - 1)
             loss = model(
                 batch,
                 max_action_prefix=config.flow.max_action_prefix,
                 prefix_conditioning_prob=config.flow.prefix_conditioning_prob,
                 prefix_noise_scale=config.flow.prefix_noise_scale,
             )
-            optimizer.zero_grad(set_to_none=True)
-            loss.backward()
+            (loss / accum_steps).backward()
+
+            micro_step += 1
+            if not is_last_accum:
+                continue
+
             grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), config.optim.max_grad_norm)
             optimizer.step()
             scheduler.step()
+            optimizer.zero_grad(set_to_none=True)
             step += 1
 
             if step % config.log_every == 0:

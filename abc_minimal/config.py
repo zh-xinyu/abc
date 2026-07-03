@@ -123,6 +123,9 @@ MIXTURE_PRESETS: dict[str, list[MixtureComponent]] = {
         MixtureComponent("train_real", "val_real", 0.8172, "throw_plastic_bottles_in_bin"),
         MixtureComponent("train_sim", "val_sim", 0.1828, "sim_put_the_plastic_bottles_in_the_bin"),
     ],
+    "bottles_real": [
+        MixtureComponent("train_real", "val_real", 1.0, "throw_plastic_bottles_in_bin"),
+    ],
 }
 
 
@@ -132,13 +135,18 @@ class TrainConfig:
     cache_root: str = field(
         default_factory=lambda: str(default_cache_root())
     )
+    output_dir: str = field(
+        default_factory=lambda: str(REPO_ROOT / "outputs" / "finetune_checkpoints_1")
+    )
     seed: int = 123
-    batch_size: int = 90
+    batch_size: int = 30
     num_workers: int = 16
     train_steps: int = 75_000
 
-    mixture_preset: Literal["bottles"] = "bottles"
+    mixture_preset: Literal["bottles", "bottles_real"] = "bottles"
     mixture: list[MixtureComponent] = field(default_factory=list)
+
+    grad_accum_steps: int = 1
 
     load_pretrained: bool = False
     dino_bf16: bool = True
