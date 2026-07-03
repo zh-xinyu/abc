@@ -205,6 +205,65 @@ episode_<uuid>/
 
 The mp4 is encoded in a manner that allows for efficient dataloading. For details, see the ABC paper.
 
+## Our Modifications
+
+> The following features are **not** part of the upstream ABC release. They were
+> added by our team to support local experiments.
+
+### Gradient Accumulation
+
+The training loop now supports gradient accumulation via `--grad-accum-steps N`.
+The effective batch size becomes `batch_size × nproc × grad_accum_steps`.
+
+```bash
+# Example: 8 GPUs × batch 30 × 3 accum steps = effective batch 720
+uv run torchrun --standalone --nproc-per-node 8 train.py \
+  --grad-accum-steps 3
+```
+
+A reference launch script is provided at `shs/train.sh`:
+
+```bash
+WANDB_NAME=<your_run_name> \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+ABC_CACHE=/path/to/cache \
+uv run torchrun --standalone --nproc-per-node 8 train.py \
+  --log-wandb \
+  --wandb-project abc_minimal \
+  --mixture-preset bottles \
+  --grad-accum-steps 3 \
+  --output-dir outputs/checkpoints/<your_output_dir> \
+  2>&1 | tee train.log
+```
+
+### LeRobot Policy Evaluation
+
+`eval_lerobot.py` evaluates a [LeRobot](https://github.com/huggingface/lerobot)
+policy checkpoint (ACT, Diffusion, etc.) in the ABC MuJoCo-Warp put-bottles sim.
+It reuses the same sim environment, rollout logic, and image preprocessing as
+`eval_policy.py`.
+
+```bash
+uv run eval_lerobot.py \
+    --checkpoint <path/to/lerobot/checkpoint> \
+    --num-worlds 20 \
+    --save-video --log-every-chunk
+```
+
+The `--checkpoint` path should point to a lerobot checkpoint directory containing
+`pretrained_model/` (or the `pretrained_model/` dir itself). Output goes to
+`outputs/sim_eval_lerobot/` by default (override with `--output-dir`).
+
+LeRobot is installed as an editable submodule from `third_party/lerobot`. After
+cloning, initialize it with:
+
+```bash
+git submodule update --init third_party/lerobot
+uv sync
+```
+
+---
+
 ## Licenses
 
 This repository includes and adapts code from the following third-party
